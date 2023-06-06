@@ -712,7 +712,7 @@ Napi::Value MethodOpenColorReader(const Napi::CallbackInfo& info) {
   hr = m_pKinectSensor->get_ColorFrameSource(&pColorFrameSource);
   if (SUCCEEDED(hr))
   {
-    hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
+    //hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
   }
   if (SUCCEEDED(hr))
   {
@@ -1832,8 +1832,102 @@ Napi::Value MethodTrackPixelsForBodyIndices(const Napi::CallbackInfo& info) {
   return info.Env().Undefined();
 }
 
+Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+  if (m_bColorThreadRunning) {
+    Napi::TypeError::New(env, "color thread already running")
+        .ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() < 1) {
+    Napi::TypeError::New(env, "Wrong number of arguments")
+        .ThrowAsJavaScriptException();
+    return env.Null();
+  } else if (!info[0].IsFunction()){
+    throw Napi::TypeError::New( env, "Expected first arg to be function" );
+  }
+
+  HRESULT hr;
+  IColorFrameSource* pColorFrameSource = NULL;
+  hr = m_pKinectSensor->get_ColorFrameSource(&pColorFrameSource);
+  if (SUCCEEDED(hr))
+  {
+    hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
+  }
+  if (SUCCEEDED(hr))
+  {
+    m_bColorThreadRunning = true;
+
+    m_tsfnColor = Napi::ThreadSafeFunction::New(
+      env,
+      info[0].As<Napi::Function>(),     // JavaScript function called asynchronously
+      "Kinect2 Color Listener",              // Name
+      1,                                // 1 call in queue
+      1,                                // Only one thread will use this initially
+      []( Napi::Env ) {                 // Finalizer used to clean threads up
+        m_tColorThread.join();
+        m_mColorThreadJoinedMutex.unlock();
+        printf("[kinect2.cc] color thread joined\n");
+      });
+
+    m_mColorThreadJoinedMutex.lock();
+    m_tColorThread = std::thread( [] {
+      
+      auto callback = []( Napi::Env env, Napi::Function jsCallback, RGBQUAD* pixelsRef ) {
+        if (!m_bColorThreadRunning) {
+          return;
+        }
+        m_mColorReaderMutex.lock();
+        jsCallback.Call( { m_v8ObjectReference.Get("colorBuffer") } );
+        m_mColorReaderMutex.unlock();
+      };
+
+      while(m_bColorThreadRunning)
+      {
+        IColorFrame* pColorFrame = NULL;
+        HRESULT hr = E_FAIL;
+        m_mColorReaderMutex.lock();
+        hr = m_pColorFrameReader->AcquireLatestFrame(&pColorFrame);
+        if (SUCCEEDED(hr))
+        {
+          processColorFrameData(pColorFrame);
+        }
+        if (!m_bColorThreadRunning)
+        {
+          m_mColorReaderMutex.unlock();
+          break;
+        }
+        m_mColorReaderMutex.unlock();
+        if (SUCCEEDED(hr))
+        {
+          napi_status status = m_tsfnColor.BlockingCall( m_pColorPixels, callback );
+          if ( status != napi_ok )
+          {
+            break;
+          }
+        }
+        SafeRelease(pColorFrame);
+      }
+      m_bColorThreadRunning = false;
+      m_tsfnColor.Release();
+    } );
+  }
+
+  SafeRelease(pColorFrameSource);
+  // m_mColorReaderMutex.unlock();
+  printf("I register this video");
+
+  if (FAILED(hr))
+  {
+    return Napi::Boolean::New(env, false);
+  }
+  return Napi::Boolean::New(env, true);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  printf("[kinect2.cc] Init\n");
+  printf("[kinect2.cc] Initdddd\n");
 
   m_v8ObjectReference = Napi::Reference<Napi::Object>::New(Napi::Object::New(env), 1);
 
