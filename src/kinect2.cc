@@ -1833,7 +1833,8 @@ Napi::Value MethodTrackPixelsForBodyIndices(const Napi::CallbackInfo& info) {
 }
 
 Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
+  
+  Napi::Env env = info.Env();
 
   if (m_bColorThreadRunning) {
     Napi::TypeError::New(env, "color thread already running")
