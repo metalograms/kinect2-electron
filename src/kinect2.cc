@@ -712,7 +712,7 @@ Napi::Value MethodOpenColorReader(const Napi::CallbackInfo& info) {
   hr = m_pKinectSensor->get_ColorFrameSource(&pColorFrameSource);
   if (SUCCEEDED(hr))
   {
-    //hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
+    hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
   }
   if (SUCCEEDED(hr))
   {
