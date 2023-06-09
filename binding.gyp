@@ -19,8 +19,8 @@
         ["target_arch=='x64'", {
           "libraries": [ 
             "-l$(KINECTSDK20_DIR)\\lib\\x64\\kinect20.lib",
-            "C:\\Users\\remmel\\Documents\\GitHub\\kinect2\\third-party\\opencv\\build\\x64\\vc16\\lib\\opencv_world470.lib",          
-            "C:\\Users\\remmel\\Documents\\GitHub\\kinect2\\third-party\\opencv\\build\\x64\\vc16\\lib\\opencv_world470d.lib"
+            "..\\third-party\\opencv\\build\\x64\\vc16\\lib\\opencv_world470.lib",          
+            "..\\third-party\\opencv\\build\\x64\\vc16\\lib\\opencv_world470d.lib"
            ]
         }]
       ],
