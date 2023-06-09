@@ -18,25 +18,34 @@
       <canvas id="outputCanvas" width="1920" height="1080" class="img-fluid"></canvas>
     </div>
     <div class="mb-3">
-      <button id="toggleFeedButton" disabled="disabled">Stop Video</button> <button style="margin-left: 400px;">Register Video</button>
+      <button id="toggleFeedButton" disabled="disabled">Stop Video</button> 
+
+      <button id="toggleToRecord" disabled="disabled" style="margin-left: 400px;">Click to Record</button>
     </div>
     <script>
       {
+        //create object kinect
         const Kinect2 = require('kinect2');
         const kinect = new Kinect2();
 
+        //create area to put image
         const $outputCanvas = document.getElementById('outputCanvas'),
           outputCtx = $outputCanvas.getContext('2d'),
           outputImageData = outputCtx.createImageData($outputCanvas.width, $outputCanvas.height);
 
+        //create variable to link button && bool to see if they are clicked
         const $toggleFeedButton = document.getElementById('toggleFeedButton');
+        const $toggleToRecord = document.getElementById('toggleToRecord');
 
         let feedOpen = false;
+        let boolRecord= false;
 
+        //Init kinect
         const init = () => {
           startKinect();
         };
 
+        //Change name of button to stop video
         const setFeedOpen = async (value) => {
           if(value !== feedOpen) {
             feedOpen = value;
@@ -50,6 +59,20 @@
           }
         }
 
+        //Change name of button Record
+        const setBoolRecord = async (value) => {
+          if(value !== boolRecord) {
+            boolRecord = value;
+            if(boolRecord) {
+              kinect.recordVideoRGB();
+              $toggleToRecord.textContent = 'Click to Record';
+            } else {
+              await kinect.closeColorReader();
+              $toggleToRecord.textContent = 'Recording';
+            }
+          }
+        }
+        //Launch kinect and fill the area to put kinect images 
         const startKinect = () => {
           if (kinect.open()) {
             kinect.on('colorFrame', (newPixelData) => {
@@ -59,13 +82,19 @@
             $toggleFeedButton.addEventListener('click', function(){
               setFeedOpen(!feedOpen);
             });
+            $toggleToRecord.addEventListener('click', function(){
+              setBoolRecord(!boolRecord);
+            });
 
             $toggleFeedButton.removeAttribute('disabled');
+            $toggleToRecord.removeAttribute('disabled');
 
             setFeedOpen(true);
+            setBoolRecord(true);
           }
         };
-
+        
+        //functiun to save put image in canvas
         const renderColorFrame = (ctx, canvasImageData, newPixelData) => {
           const pixelArray = canvasImageData.data;
           for (let i = 0; i < canvasImageData.data.length; i++) {

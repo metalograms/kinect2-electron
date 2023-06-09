@@ -7,6 +7,8 @@ Thumbs.db
 build-tmp*/
 lib/binding/
 
+third-party/*
+
 # Ignore the downloaded SDK
 /sdk
 

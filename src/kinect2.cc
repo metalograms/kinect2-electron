@@ -2,6 +2,8 @@
 #include <thread>
 #include <mutex>
 #include <napi.h>
+#include <filesystem>
+#include <opencv2/opencv.hpp>
 #include "Kinect.h"
 #include "Globals.h"
 #include "Structs.h"
@@ -50,6 +52,9 @@ std::mutex                m_mColorThreadJoinedMutex;
 float                     m_fColorHorizontalFieldOfView;
 float                     m_fColorVerticalFieldOfView;
 float                     m_fColorDiagonalFieldOfView;
+
+float                     m_widthImg;
+float                     m_heightImg;
 
 // Infrared
 std::thread               m_tInfraredThread;
@@ -208,6 +213,7 @@ HRESULT processColorFrameData(IColorFrame* pColorFrame)
   {
     hr = pColorFrame->get_RawColorImageFormat(&imageFormat);
   }
+
   if (SUCCEEDED(hr))
   {
     if (imageFormat == ColorImageFormat_Rgba)
@@ -1831,10 +1837,14 @@ Napi::Value MethodTrackPixelsForBodyIndices(const Napi::CallbackInfo& info) {
 
   return info.Env().Undefined();
 }
+/// todo
+// HRESULT CColorBasics::GetScreenshotFileName(_Out_writes_z_(nFilePathSize) LPWSTR lpszFilePath, UINT nFilePathSize)
+// {
+//     //where to place files creates
+// }
 
-Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
-  
-  Napi::Env env = info.Env();
+Napi::Value MethodRecordVideoRGB(const Napi::CallbackInfo& info) {
+Napi::Env env = info.Env();
 
   if (m_bColorThreadRunning) {
     Napi::TypeError::New(env, "color thread already running")
@@ -1849,6 +1859,10 @@ Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
   } else if (!info[0].IsFunction()){
     throw Napi::TypeError::New( env, "Expected first arg to be function" );
   }
+  namespace fs = std::filesystem;
+  if (!fs::is_directory("records") || !fs::exists("records")) { // Check if src folder exists
+    fs::create_directory("records"); // create src folder
+}
 
   HRESULT hr;
   IColorFrameSource* pColorFrameSource = NULL;
@@ -1901,6 +1915,7 @@ Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
           break;
         }
         m_mColorReaderMutex.unlock();
+
         if (SUCCEEDED(hr))
         {
           napi_status status = m_tsfnColor.BlockingCall( m_pColorPixels, callback );
@@ -1909,6 +1924,13 @@ Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
             break;
           }
         }
+        
+        for (size_t i = 0; i < 1000; i++)
+        {
+          printf("[%d] \n",m_pInfraredPixels[0]);
+        }
+        
+        
         SafeRelease(pColorFrame);
       }
       m_bColorThreadRunning = false;
@@ -1918,8 +1940,6 @@ Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
 
   SafeRelease(pColorFrameSource);
   // m_mColorReaderMutex.unlock();
-  printf("I register this video");
-
   if (FAILED(hr))
   {
     return Napi::Boolean::New(env, false);
@@ -1929,6 +1949,8 @@ Napi::Value MethodRegisterVideoRGB(const Napi::CallbackInfo& info) {
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   printf("[kinect2.cc] Initdddd\n");
+  cv::Mat mat;
+  printf("[kinect2.cc] creation mat\n");
 
   m_v8ObjectReference = Napi::Reference<Napi::Object>::New(Napi::Object::New(env), 1);
 
@@ -1962,8 +1984,9 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set(Napi::String::New(env, "close"), Napi::Function::New(env, MethodClose));
 
   exports.Set(Napi::String::New(env, "openColorReader"), Napi::Function::New(env, MethodOpenColorReader));
+  exports.Set(Napi::String::New(env, "recordVideoRGB"), Napi::Function::New(env, MethodRecordVideoRGB));
   exports.Set(Napi::String::New(env, "closeColorReader"), Napi::Function::New(env, MethodCloseColorReader));
-  
+
   exports.Set(Napi::String::New(env, "openInfraredReader"), Napi::Function::New(env, MethodOpenInfraredReader));
   exports.Set(Napi::String::New(env, "closeInfraredReader"), Napi::Function::New(env, MethodCloseInfraredReader));
   
